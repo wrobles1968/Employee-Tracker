@@ -1,21 +1,13 @@
-const table = require('console.table');
 const inquirer = require('inquirer');
 const mysql = require('mysql')
-
-// Create express app instance.
-let app = express();
-
-// Set the port of our application
-// process.env.PORT lets the port be set by Heroku
-let PORT = process.env.PORT || 8080;
 
 // MySQL DB Connection Information (remember to change this with our specific credentials)
 let connection = mysql.createConnection({
   host: "localhost",
-  port: 8080,
+  port: 3306,
   user: "root",
   password: "wcr123456",
-  database: "employee_tracker_db"
+  database: "employee_Tracker_db"
 });
 // Initiate MySQL Connection.
 connection.connect(function(err) {
@@ -26,11 +18,24 @@ connection.connect(function(err) {
     console.log("connected as id " + connection.threadId);
   });
 
-  connection.query(`INSERT INTO department (name) VALUES ('${name}')`, function (err, data) {
-    if (err) throw err;
-    console.log(`Added`)
-    getJob();
-  });
+  function view() {
+    inquirer
+        .prompt(
+            {
+                name: "db",
+                message: 'What are we looking at?',
+                type: 'list',
+                choices: ['department', 'role', 'employee'],
+            }
+        ).then(function ({ db }) {
+            connection.query(`SELECT * FROM ${db}`, function (err, data) {
+                if (err) throw err;
+
+                console.table(data)
+                getJob();
+            })
+        })
+}
 
   
   getJob();
@@ -40,7 +45,7 @@ connection.connect(function(err) {
               {
                   name: 'job',
                   type: 'list',
-                  message: 'Which would you like to do?',
+                  message: 'What is your request?',
                   choices: ['add', 'view', 'update', 'exit'],
               }
           ).then(function ({ job }) {
@@ -67,7 +72,7 @@ connection.connect(function(err) {
           .prompt(
               {
                   name: "db",
-                  message: 'Which would you like to add?',
+                  message: 'What do you want to add?',
                   type: 'list',
                   choices: ['department', 'role', 'employee'],
               }
@@ -92,7 +97,7 @@ connection.connect(function(err) {
           .prompt(
               {
                   name: 'name',
-                  message: "What is the department's name?",
+                  message: "What department?",
                   type: 'input'
               }
           ).then(function ({ name }) {
@@ -114,23 +119,63 @@ connection.connect(function(err) {
               departments.push(data[i].name)
   
           }
+
+          inquirer
+          .prompt([
+              {
+                  name: 'employee_id',
+                  message: "Who needs updating",
+                  type: 'list',
+                  choices: employees
+              },
+              {
+                  name: 'role_id',
+                  message: "The new role is?",
+                  type: 'list',
+                  choices: roles
+              }
+          ]).then(function ({ employee_id, role_id }) {
+
+              connection.query(`UPDATE employee SET role_id = ${roles.indexOf(role_id) + 1} WHERE id = ${employees.indexOf(employee_id) + 1}`, function (err, data) {
+                  if (err) throw err;
+
+                  getJob();
+                inquirer
+                  .prompt([
+                      {
+                          name: 'employee_id',
+                          message: "Who needs updating",
+                          type: 'list',
+                          choices: employees
+                      },
+                      {
+                          name: 'role_id',
+                          message: "The new role is?",
+                          type: 'list',
+                          choices: roles
+                      }
+                  ]).then(function ({ employee_id, role_id }) {
+
+                      connection.query(`UPDATE employee SET role_id = ${roles.indexOf(role_id) + 1} WHERE id = ${employees.indexOf(employee_id) + 1}`, function (err, data) {
+                          if (err) throw err;
   
+                          getJob();
   
           inquirer
               .prompt([
                   {
                       name: 'title',
-                      message: "What is the role?",
+                      message: "The role?",
                       type: 'input'
                   },
                   {
                       name: 'salary',
-                      message: 'How much do they make?',
+                      message: 'How much do they get paid?',
                       type: 'input'
                   },
                   {
                       name: 'department_id',
-                      message: 'What department does it belong to?',
+                      message: 'Dept. does it belong to?',
                       type: 'list',
                       choices: departments
                   }
@@ -144,7 +189,7 @@ connection.connect(function(err) {
                   })
               })
       })
-  }
+  })
   
   function add_employee() {
       let employees = [];
@@ -169,23 +214,23 @@ connection.connect(function(err) {
                   .prompt([
                       {
                           name: 'first_name',
-                          message: "what's the employees First Name",
+                          message: "The First Name",
                           type: 'input'
                       },
                       {
                           name: 'last_name',
-                          message: 'What is their last name?',
+                          message: 'Their last name?',
                           type: 'input',
                       },
                       {
                           name: 'role_id',
-                          message: 'What is their role?',
+                          message: 'What role do they hold?',
                           type: 'list',
                           choices: roles,
                       },
                       {
                           name: 'manager_id',
-                          message: "Who is their manager?",
+                          message: "Who is their boss?",
                           type: 'list',
                           choices: ['none'].concat(employees)
                       }
@@ -209,31 +254,12 @@ connection.connect(function(err) {
       })
   }
   
-  function view() {
-      inquirer
-          .prompt(
-              {
-                  name: "db",
-                  message: 'Which would you like to view?',
-                  type: 'list',
-                  choices: ['department', 'role', 'employee'],
-              }
-          ).then(function ({ db }) {
-              connection.query(`SELECT * FROM ${db}`, function (err, data) {
-                  if (err) throw err;
-  
-                  console.table(data)
-                  getJob();
-              })
-          })
-  }
-  
   function update() {
       inquirer
           .prompt(
               {
                   name: 'update',
-                  message: 'What would you like to update?',
+                  message: 'Do you need to update?',
                   type: 'list',
                   choices: ['role', 'manager']
               }
@@ -267,31 +293,9 @@ connection.connect(function(err) {
                   roles.push(data[i].title)
               }
   
-              inquirer
-                  .prompt([
-                      {
-                          name: 'employee_id',
-                          message: "Who's role needs to be updated",
-                          type: 'list',
-                          choices: employees
-                      },
-                      {
-                          name: 'role_id',
-                          message: "What is the new role?",
-                          type: 'list',
-                          choices: roles
-                      }
-                  ]).then(function ({ employee_id, role_id }) {
 
-                      connection.query(`UPDATE employee SET role_id = ${roles.indexOf(role_id) + 1} WHERE id = ${employees.indexOf(employee_id) + 1}`, function (err, data) {
-                          if (err) throw err;
-  
-                          getJob();
                       })
                   })
-          })
-  
-      })
-  }
-  
-  
+          }
+        
+        })})})}
